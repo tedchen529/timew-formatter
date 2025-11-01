@@ -2,6 +2,43 @@ const fs = require('fs')
 const path = require('path')
 
 /**
+ * Load categories configuration
+ */
+function loadCategories() {
+  const categoriesPath = path.join(
+    __dirname,
+    'json',
+    'settings',
+    'categories.json'
+  )
+
+  if (!fs.existsSync(categoriesPath)) {
+    console.warn('Warning: Categories file not found:', categoriesPath)
+    return {}
+  }
+
+  try {
+    const data = JSON.parse(fs.readFileSync(categoriesPath, 'utf8'))
+    return data[0] // Categories are in the first object of the array
+  } catch (error) {
+    console.error('Error reading categories file:', error.message)
+    return {}
+  }
+}
+
+/**
+ * Map session name to main category
+ */
+function getMainCategory(sessionName, categories) {
+  for (const [categoryName, sessionList] of Object.entries(categories)) {
+    if (sessionList.includes(sessionName)) {
+      return categoryName
+    }
+  }
+  return 'uncategorized' // For sessions not found in any category
+}
+
+/**
  * Parse time string in format HH:MM:SS to seconds
  */
 function parseTimeToSeconds(timeStr) {
@@ -78,6 +115,36 @@ function loadTimeDataForDate(date) {
 }
 
 /**
+ * Extract day type from a clean JSON file
+ */
+function getDayTypeForDate(date) {
+  const dateStr = formatDate(date).replace(/-/g, '')
+  const filePath = path.join(
+    __dirname,
+    'json',
+    'clean',
+    `timew_clean_${dateStr}.json`
+  )
+
+  if (!fs.existsSync(filePath)) {
+    return null
+  }
+
+  try {
+    const data = JSON.parse(fs.readFileSync(filePath, 'utf8'))
+    // The day type should be in the last element of the array
+    const lastElement = data[data.length - 1]
+    if (lastElement && lastElement.dayType) {
+      return lastElement.dayType
+    }
+    return null
+  } catch (error) {
+    console.error(`Error reading day type for date ${dateStr}:`, error.message)
+    return null
+  }
+}
+
+/**
  * Aggregate time data for sessions
  */
 function aggregateSessionTime(timeEntries) {
@@ -136,9 +203,46 @@ function aggregateProjectTime(timeEntries) {
 }
 
 /**
+ * Aggregate time data by main categories (excluding uncategorized)
+ */
+function aggregateCategoryTime(timeEntries, categories) {
+  const categoryTotals = {}
+
+  timeEntries.forEach((entry) => {
+    const sessionName = entry.session_name
+    const category = getMainCategory(sessionName, categories)
+    const timeInSeconds = parseTimeToSeconds(entry.time)
+
+    // Only include categorized entries (exclude 'uncategorized')
+    if (category !== 'uncategorized') {
+      if (!categoryTotals[category]) {
+        categoryTotals[category] = 0
+      }
+
+      categoryTotals[category] += timeInSeconds
+    }
+  })
+
+  // Convert back to time format and sort alphabetically
+  const sortedCategories = Object.keys(categoryTotals)
+    .sort()
+    .map((categoryName) => ({
+      category: categoryName,
+      totalTime: secondsToTimeFormat(categoryTotals[categoryName]),
+    }))
+
+  return sortedCategories
+}
+
+/**
  * Export analysis results to JSON file
  */
-function exportResults(analysisResults, startDateStr, endDateStr = null) {
+function exportResults(
+  analysisResults,
+  startDateStr,
+  endDateStr = null,
+  dayTypeFilters = []
+) {
   // Create results directory if it doesn't exist
   const resultsDir = path.join(__dirname, 'json', 'results')
   if (!fs.existsSync(resultsDir)) {
@@ -154,6 +258,12 @@ function exportResults(analysisResults, startDateStr, endDateStr = null) {
     const startFormatted = startDateStr.replace(/-/g, '')
     const endFormatted = endDateStr.replace(/-/g, '')
     filename = `timew_results_${startFormatted}-${endFormatted}.json`
+  }
+
+  // Add day type filter to filename if specified
+  if (dayTypeFilters.length > 0) {
+    const dayTypeString = dayTypeFilters.join('_')
+    filename = filename.replace('.json', `_just_${dayTypeString}.json`)
   }
 
   const filePath = path.join(resultsDir, filename)
@@ -172,7 +282,8 @@ function exportResults(analysisResults, startDateStr, endDateStr = null) {
 function analyzeTimeData(
   startDateStr,
   endDateStr = null,
-  shouldExport = false
+  shouldExport = false,
+  dayTypeFilters = []
 ) {
   let dates = []
   let isDateRange = false
@@ -190,6 +301,41 @@ function analyzeTimeData(
     console.log(`Analyzing time data from ${startDateStr} to ${endDateStr}`)
   }
 
+  // If day type filters are specified, filter dates by day type
+  if (dayTypeFilters.length > 0) {
+    const filteredDates = []
+    const matchingDayTypes = []
+
+    dates.forEach((date) => {
+      const dayType = getDayTypeForDate(date)
+      if (dayType && dayTypeFilters.includes(dayType)) {
+        filteredDates.push(date)
+        matchingDayTypes.push({
+          date: formatDate(date),
+          dayType: dayType,
+        })
+      }
+    })
+
+    if (filteredDates.length === 0) {
+      console.log(
+        `No results found for day type(s): ${dayTypeFilters.join(', ')}`
+      )
+      return
+    }
+
+    dates = filteredDates
+    console.log(
+      `Filtered to ${
+        filteredDates.length
+      } day(s) matching day type(s): ${dayTypeFilters.join(', ')}`
+    )
+    matchingDayTypes.forEach(({ date, dayType }) => {
+      console.log(`  - ${date}: ${dayType}`)
+    })
+    console.log('')
+  }
+
   // Collect all time entries from all dates
   let allTimeEntries = []
   let filesFound = 0
@@ -197,7 +343,11 @@ function analyzeTimeData(
   dates.forEach((date) => {
     const dateEntries = loadTimeDataForDate(date)
     if (dateEntries.length > 0) {
-      allTimeEntries = allTimeEntries.concat(dateEntries)
+      // Filter out the day type entry (it doesn't have session_name or time fields)
+      const timeEntries = dateEntries.filter(
+        (entry) => entry.session_name && entry.time
+      )
+      allTimeEntries = allTimeEntries.concat(timeEntries)
       filesFound++
     }
   })
@@ -211,9 +361,13 @@ function analyzeTimeData(
     `\nFound data from ${filesFound} file(s) with ${allTimeEntries.length} total entries.\n`
   )
 
+  // Load categories for main category analysis
+  const categories = loadCategories()
+
   // Aggregate and display results
   const sessionAggregates = aggregateSessionTime(allTimeEntries)
   const projectAggregates = aggregateProjectTime(allTimeEntries)
+  const categoryAggregates = aggregateCategoryTime(allTimeEntries, categories)
 
   // Calculate grand total first
   const grandTotalSeconds = sessionAggregates.reduce((total, { totalTime }) => {
@@ -278,9 +432,55 @@ function analyzeTimeData(
     )
   }
 
+  // Display By Main Categories section
+  if (categoryAggregates.length > 0) {
+    console.log('\nBy Main Categories (ordered alphabetically):')
+    console.log('===========================================')
+
+    // Calculate total categorized time for percentage calculations
+    const totalCategorizedSeconds = categoryAggregates.reduce(
+      (total, { totalTime }) => {
+        return total + parseTimeToSeconds(totalTime)
+      },
+      0
+    )
+
+    categoryAggregates.forEach(({ category, totalTime }) => {
+      const categorySeconds = parseTimeToSeconds(totalTime)
+      const percentage = (
+        (categorySeconds / totalCategorizedSeconds) *
+        100
+      ).toFixed(1)
+
+      let displayTime = totalTime
+      if (isDateRange && dates.length > 1) {
+        const averageSeconds = Math.round(categorySeconds / dates.length)
+        const averageTime = secondsToTimeFormat(averageSeconds)
+        displayTime = `${totalTime}/${averageTime}`
+      }
+
+      console.log(`${category}: ${displayTime} (${percentage}%)`)
+    })
+
+    console.log('===========================================')
+
+    console.log(
+      `Total time across all categories: ${secondsToTimeFormat(
+        totalCategorizedSeconds
+      )}`
+    )
+  }
+
   // Export results if requested
   if (shouldExport) {
     const totalProjectSeconds = projectAggregates.reduce(
+      (total, { totalTime }) => {
+        return total + parseTimeToSeconds(totalTime)
+      },
+      0
+    )
+
+    const totalCategorySeconds = categoryAggregates.reduce(
       (total, { totalTime }) => {
         return total + parseTimeToSeconds(totalTime)
       },
@@ -291,6 +491,12 @@ function analyzeTimeData(
       dateRange: {
         startDate: startDateStr,
         endDate: endDateStr,
+        ...(dayTypeFilters.length > 0 && {
+          dayTypeFilter: dayTypeFilters,
+          filteredDescription: `Filtered to show only: ${dayTypeFilters.join(
+            ', '
+          )}`,
+        }),
       },
       summary: {
         totalFiles: filesFound,
@@ -299,6 +505,8 @@ function analyzeTimeData(
         totalTimeSeconds: grandTotalSeconds,
         totalProjectTime: secondsToTimeFormat(totalProjectSeconds),
         totalProjectTimeSeconds: totalProjectSeconds,
+        totalCategoryTime: secondsToTimeFormat(totalCategorySeconds),
+        totalCategoryTimeSeconds: totalCategorySeconds,
         ...(isDateRange &&
           dates.length > 1 && {
             totalDays: dates.length,
@@ -352,10 +560,32 @@ function analyzeTimeData(
 
         return projectData
       }),
+      categories: categoryAggregates.map(({ category, totalTime }) => {
+        const categorySeconds = parseTimeToSeconds(totalTime)
+        const percentage = (
+          (categorySeconds / totalCategorySeconds) *
+          100
+        ).toFixed(1)
+        const categoryData = {
+          categoryName: category,
+          totalTime: totalTime,
+          totalTimeSeconds: categorySeconds,
+          percentage: `${percentage}%`,
+        }
+
+        // Add average time if it's a date range
+        if (isDateRange && dates.length > 1) {
+          const averageSeconds = Math.round(categorySeconds / dates.length)
+          categoryData.averageTime = secondsToTimeFormat(averageSeconds)
+          categoryData.averageTimeSeconds = averageSeconds
+        }
+
+        return categoryData
+      }),
       generatedAt: new Date().toISOString(),
     }
 
-    exportResults(analysisResults, startDateStr, endDateStr)
+    exportResults(analysisResults, startDateStr, endDateStr, dayTypeFilters)
   }
 }
 
@@ -371,30 +601,67 @@ function main() {
     console.log(
       '  Date range:  node analyzer.js YYYY-MM-DD - YYYY-MM-DD [export]'
     )
+    console.log(
+      '  Day type filter: node analyzer.js YYYY-MM-DD - YYYY-MM-DD [export] just <dayType1> [dayType2] ...'
+    )
     console.log('')
     console.log('Examples:')
     console.log('  node analyzer.js 2025-10-30')
     console.log('  node analyzer.js 2025-10-30 export')
     console.log('  node analyzer.js 2025-09-30 - 2025-10-30')
     console.log('  node analyzer.js 2025-09-30 - 2025-10-30 export')
+    console.log('  node analyzer.js 2025-10-27 - 2025-10-29 just workday')
+    console.log(
+      '  node analyzer.js 2025-10-27 - 2025-10-29 export just workday workday-outlier'
+    )
     return
   }
 
   // Check if export is requested
   const shouldExport = args.includes('export')
-  const filteredArgs = args.filter((arg) => arg !== 'export')
+
+  // Check if day type filtering is requested
+  const justIndex = args.indexOf('just')
+  let dayTypeFilters = []
+
+  if (justIndex !== -1) {
+    // Extract day types after "just"
+    dayTypeFilters = args.slice(justIndex + 1).filter((arg) => arg !== 'export')
+  }
+
+  // Filter out 'export' and 'just' and day types from args
+  const filteredArgs = args.filter((arg, index) => {
+    return (
+      arg !== 'export' &&
+      arg !== 'just' &&
+      (justIndex === -1 || index < justIndex || index === justIndex)
+    )
+  })
+
+  // Check for single date with day type filter (not allowed)
+  if (filteredArgs.length === 1 && dayTypeFilters.length > 0) {
+    console.error(
+      'Day type filtering is not available for single dates. Only intervals are supported.'
+    )
+    return
+  }
 
   if (filteredArgs.length === 1) {
     // Single date analysis
     analyzeTimeData(filteredArgs[0], null, shouldExport)
   } else if (filteredArgs.length === 3 && filteredArgs[1] === '-') {
     // Date range analysis
-    analyzeTimeData(filteredArgs[0], filteredArgs[2], shouldExport)
+    analyzeTimeData(
+      filteredArgs[0],
+      filteredArgs[2],
+      shouldExport,
+      dayTypeFilters
+    )
   } else {
     console.error('Invalid arguments. Use:')
     console.error('  Single date: node analyzer.js YYYY-MM-DD [export]')
     console.error(
-      '  Date range:  node analyzer.js YYYY-MM-DD - YYYY-MM-DD [export]'
+      '  Date range:  node analyzer.js YYYY-MM-DD - YYYY-MM-DD [export] [just <dayType1> [dayType2] ...]'
     )
   }
 }
@@ -407,8 +674,12 @@ if (require.main === module) {
 module.exports = {
   aggregateSessionTime,
   aggregateProjectTime,
+  aggregateCategoryTime,
   parseTimeToSeconds,
   secondsToTimeFormat,
   analyzeTimeData,
   exportResults,
+  loadCategories,
+  getMainCategory,
+  getDayTypeForDate,
 }
