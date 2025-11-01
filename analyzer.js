@@ -106,6 +106,36 @@ function aggregateSessionTime(timeEntries) {
 }
 
 /**
+ * Aggregate time data for projects
+ */
+function aggregateProjectTime(timeEntries) {
+  const projectTotals = {}
+
+  timeEntries.forEach((entry) => {
+    if (entry.project) {
+      const projectName = entry.project
+      const timeInSeconds = parseTimeToSeconds(entry.time)
+
+      if (!projectTotals[projectName]) {
+        projectTotals[projectName] = 0
+      }
+
+      projectTotals[projectName] += timeInSeconds
+    }
+  })
+
+  // Convert back to time format and sort alphabetically
+  const sortedProjects = Object.keys(projectTotals)
+    .sort()
+    .map((projectName) => ({
+      project: projectName,
+      totalTime: secondsToTimeFormat(projectTotals[projectName]),
+    }))
+
+  return sortedProjects
+}
+
+/**
  * Export analysis results to JSON file
  */
 function exportResults(analysisResults, startDateStr, endDateStr = null) {
@@ -145,6 +175,7 @@ function analyzeTimeData(
   shouldExport = false
 ) {
   let dates = []
+  let isDateRange = false
 
   if (endDateStr === null) {
     // Single date analysis
@@ -155,6 +186,7 @@ function analyzeTimeData(
     const startDate = parseDate(startDateStr)
     const endDate = parseDate(endDateStr)
     dates = getDatesBetween(startDate, endDate)
+    isDateRange = true
     console.log(`Analyzing time data from ${startDateStr} to ${endDateStr}`)
   }
 
@@ -181,26 +213,80 @@ function analyzeTimeData(
 
   // Aggregate and display results
   const sessionAggregates = aggregateSessionTime(allTimeEntries)
+  const projectAggregates = aggregateProjectTime(allTimeEntries)
+
+  // Calculate grand total first
+  const grandTotalSeconds = sessionAggregates.reduce((total, { totalTime }) => {
+    return total + parseTimeToSeconds(totalTime)
+  }, 0)
 
   console.log('Session Time Aggregates (ordered alphabetically):')
   console.log('================================================')
 
   sessionAggregates.forEach(({ session, totalTime }) => {
-    console.log(`${session}: ${totalTime}`)
-  })
+    const sessionSeconds = parseTimeToSeconds(totalTime)
+    const percentage = ((sessionSeconds / grandTotalSeconds) * 100).toFixed(1)
 
-  // Calculate grand total
-  const grandTotalSeconds = sessionAggregates.reduce((total, { totalTime }) => {
-    return total + parseTimeToSeconds(totalTime)
-  }, 0)
+    let displayTime = totalTime
+    if (isDateRange && dates.length > 1) {
+      const averageSeconds = Math.round(sessionSeconds / dates.length)
+      const averageTime = secondsToTimeFormat(averageSeconds)
+      displayTime = `${totalTime}/${averageTime}`
+    }
+
+    console.log(`${session}: ${displayTime} (${percentage}%)`)
+  })
 
   console.log('================================================')
   console.log(
     `Total time across all sessions: ${secondsToTimeFormat(grandTotalSeconds)}`
   )
 
+  // Display Projects section if there are any projects
+  if (projectAggregates.length > 0) {
+    console.log('\nProjects (ordered alphabetically):')
+    console.log('==================================')
+
+    projectAggregates.forEach(({ project, totalTime }) => {
+      const projectSeconds = parseTimeToSeconds(totalTime)
+      const percentage = ((projectSeconds / grandTotalSeconds) * 100).toFixed(1)
+
+      let displayTime = totalTime
+      if (isDateRange && dates.length > 1) {
+        const averageSeconds = Math.round(projectSeconds / dates.length)
+        const averageTime = secondsToTimeFormat(averageSeconds)
+        displayTime = `${totalTime}/${averageTime}`
+      }
+
+      console.log(`${project}: ${displayTime} (${percentage}%)`)
+    })
+
+    console.log('==================================')
+
+    // Calculate total project time
+    const totalProjectSeconds = projectAggregates.reduce(
+      (total, { totalTime }) => {
+        return total + parseTimeToSeconds(totalTime)
+      },
+      0
+    )
+
+    console.log(
+      `Total time across all projects: ${secondsToTimeFormat(
+        totalProjectSeconds
+      )}`
+    )
+  }
+
   // Export results if requested
   if (shouldExport) {
+    const totalProjectSeconds = projectAggregates.reduce(
+      (total, { totalTime }) => {
+        return total + parseTimeToSeconds(totalTime)
+      },
+      0
+    )
+
     const analysisResults = {
       dateRange: {
         startDate: startDateStr,
@@ -211,12 +297,61 @@ function analyzeTimeData(
         totalEntries: allTimeEntries.length,
         totalTime: secondsToTimeFormat(grandTotalSeconds),
         totalTimeSeconds: grandTotalSeconds,
+        totalProjectTime: secondsToTimeFormat(totalProjectSeconds),
+        totalProjectTimeSeconds: totalProjectSeconds,
+        ...(isDateRange &&
+          dates.length > 1 && {
+            totalDays: dates.length,
+            averageTimePerDay: secondsToTimeFormat(
+              Math.round(grandTotalSeconds / dates.length)
+            ),
+            averageTimePerDaySeconds: Math.round(
+              grandTotalSeconds / dates.length
+            ),
+          }),
       },
-      sessions: sessionAggregates.map(({ session, totalTime }) => ({
-        sessionName: session,
-        totalTime: totalTime,
-        totalTimeSeconds: parseTimeToSeconds(totalTime),
-      })),
+      sessions: sessionAggregates.map(({ session, totalTime }) => {
+        const sessionSeconds = parseTimeToSeconds(totalTime)
+        const percentage = ((sessionSeconds / grandTotalSeconds) * 100).toFixed(
+          1
+        )
+        const sessionData = {
+          sessionName: session,
+          totalTime: totalTime,
+          totalTimeSeconds: sessionSeconds,
+          percentage: `${percentage}%`,
+        }
+
+        // Add average time if it's a date range
+        if (isDateRange && dates.length > 1) {
+          const averageSeconds = Math.round(sessionSeconds / dates.length)
+          sessionData.averageTime = secondsToTimeFormat(averageSeconds)
+          sessionData.averageTimeSeconds = averageSeconds
+        }
+
+        return sessionData
+      }),
+      projects: projectAggregates.map(({ project, totalTime }) => {
+        const projectSeconds = parseTimeToSeconds(totalTime)
+        const percentage = ((projectSeconds / grandTotalSeconds) * 100).toFixed(
+          1
+        )
+        const projectData = {
+          projectName: project,
+          totalTime: totalTime,
+          totalTimeSeconds: projectSeconds,
+          percentage: `${percentage}%`,
+        }
+
+        // Add average time if it's a date range
+        if (isDateRange && dates.length > 1) {
+          const averageSeconds = Math.round(projectSeconds / dates.length)
+          projectData.averageTime = secondsToTimeFormat(averageSeconds)
+          projectData.averageTimeSeconds = averageSeconds
+        }
+
+        return projectData
+      }),
       generatedAt: new Date().toISOString(),
     }
 
@@ -271,6 +406,7 @@ if (require.main === module) {
 
 module.exports = {
   aggregateSessionTime,
+  aggregateProjectTime,
   parseTimeToSeconds,
   secondsToTimeFormat,
   analyzeTimeData,
