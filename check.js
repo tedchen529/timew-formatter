@@ -190,18 +190,163 @@ function formatTime(totalSeconds) {
     .padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
 }
 
+function checkSpecificProject(projectName) {
+  // Read all clean JSON files
+  const cleanDir = path.join(__dirname, 'json', 'clean')
+  let totalSeconds = 0
+  let totalEntries = 0
+  let earliestDate = null
+  let latestDate = null
+  const dailySummary = {}
+
+  try {
+    const files = fs.readdirSync(cleanDir)
+    const jsonFiles = files.filter((file) => file.endsWith('.json'))
+
+    jsonFiles.forEach((file) => {
+      const filePath = path.join(cleanDir, file)
+      const data = JSON.parse(fs.readFileSync(filePath, 'utf8'))
+
+      // Extract date from filename (assuming format: timew_clean_YYYYMMDD.json)
+      const dateMatch = file.match(/timew_clean_(\d{8})\.json/)
+      const fileDate = dateMatch ? dateMatch[1] : 'unknown'
+
+      // Filter entries for the specific project (case-insensitive)
+      const projectEntries = data.filter((entry) => {
+        if (!entry.project) return false
+        return entry.project.toLowerCase() === projectName.toLowerCase()
+      })
+
+      if (projectEntries.length > 0) {
+        let dayTotal = 0
+
+        projectEntries.forEach((entry) => {
+          if (entry.time) {
+            // Parse time format "HH:MM:SS"
+            const timeParts = entry.time.split(':')
+            const hours = parseInt(timeParts[0])
+            const minutes = parseInt(timeParts[1])
+            const seconds = parseInt(timeParts[2])
+            const entrySeconds = hours * 3600 + minutes * 60 + seconds
+
+            totalSeconds += entrySeconds
+            dayTotal += entrySeconds
+            totalEntries++
+
+            // Track date range using file date
+            if (dateMatch) {
+              const currentDate = new Date(
+                parseInt(dateMatch[1].substring(0, 4)), // year
+                parseInt(dateMatch[1].substring(4, 6)) - 1, // month (0-based)
+                parseInt(dateMatch[1].substring(6, 8)) // day
+              )
+
+              if (!earliestDate || currentDate < earliestDate) {
+                earliestDate = currentDate
+              }
+              if (!latestDate || currentDate > latestDate) {
+                latestDate = currentDate
+              }
+            }
+          }
+        })
+
+        if (dayTotal > 0) {
+          const dayHours = Math.floor(dayTotal / 3600)
+          const dayMinutes = Math.floor((dayTotal % 3600) / 60)
+          const daySecs = dayTotal % 60
+          dailySummary[fileDate] = {
+            time: `${dayHours}h ${dayMinutes}m ${daySecs}s`,
+            entries: projectEntries.length,
+          }
+        }
+      }
+    })
+
+    if (totalEntries === 0) {
+      console.log(`No time entries found for project: "${projectName}"`)
+      console.log('\nAvailable projects:')
+
+      // Show available projects
+      const allProjects = new Set()
+      jsonFiles.forEach((file) => {
+        const filePath = path.join(cleanDir, file)
+        const data = JSON.parse(fs.readFileSync(filePath, 'utf8'))
+        data.forEach((entry) => {
+          if (entry.project) {
+            allProjects.add(entry.project)
+          }
+        })
+      })
+
+      Array.from(allProjects)
+        .sort()
+        .forEach((project) => {
+          console.log(`  - "${project}"`)
+        })
+      return
+    }
+
+    // Format total time
+    const hours = Math.floor(totalSeconds / 3600)
+    const minutes = Math.floor((totalSeconds % 3600) / 60)
+    const seconds = totalSeconds % 60
+
+    // Format dates
+    const formatDate = (date) =>
+      date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      })
+
+    console.log(`\nProject Summary: "${projectName}"`)
+    console.log('='.repeat(60))
+    console.log(`Total Time: ${hours}h ${minutes}m ${seconds}s`)
+    console.log(`Total Entries: ${totalEntries}`)
+    if (earliestDate && latestDate) {
+      console.log(
+        `Date Range: ${formatDate(earliestDate)} - ${formatDate(latestDate)}`
+      )
+    }
+
+    // Show daily breakdown
+    console.log('\nDaily Breakdown:')
+    console.log('-'.repeat(40))
+    Object.keys(dailySummary)
+      .sort()
+      .forEach((date) => {
+        const summary = dailySummary[date]
+        const formattedDate = date.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3')
+        console.log(
+          `${formattedDate}: ${summary.time} (${summary.entries} entries)`
+        )
+      })
+    console.log('='.repeat(60))
+  } catch (error) {
+    console.error('Error processing project data:', error.message)
+  }
+}
+
 // Check command line arguments
 const args = process.argv.slice(2)
 if (args.length === 0) {
-  console.log('Usage: node check.js [categories|projects]')
+  console.log('Usage: node check.js [categories|projects [project-name]]')
   process.exit(1)
 }
 
 if (args[0] === 'categories') {
   checkCategories()
 } else if (args[0] === 'projects') {
-  checkProjects()
+  if (args.length === 1) {
+    // No project name specified, show all projects
+    checkProjects()
+  } else {
+    // Project name specified, show details for that project
+    const projectName = args.slice(1).join(' ')
+    checkSpecificProject(projectName)
+  }
 } else {
-  console.log('Usage: node check.js [categories|projects]')
+  console.log('Usage: node check.js [categories|projects [project-name]]')
   process.exit(1)
 }
