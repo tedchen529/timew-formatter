@@ -205,7 +205,11 @@ function aggregateProjectTime(timeEntries) {
 /**
  * Aggregate time data by main categories (excluding uncategorized)
  */
-function aggregateCategoryTime(timeEntries, categories) {
+function aggregateCategoryTime(
+  timeEntries,
+  categories,
+  excludeCategories = []
+) {
   const categoryTotals = {};
 
   timeEntries.forEach((entry) => {
@@ -213,8 +217,8 @@ function aggregateCategoryTime(timeEntries, categories) {
     const category = getMainCategory(sessionName, categories);
     const timeInSeconds = parseTimeToSeconds(entry.time);
 
-    // Only include categorized entries (exclude 'uncategorized')
-    if (category !== "uncategorized") {
+    // Only include categorized entries (exclude 'uncategorized' and excluded categories)
+    if (category !== "uncategorized" && !excludeCategories.includes(category)) {
       if (!categoryTotals[category]) {
         categoryTotals[category] = 0;
       }
@@ -242,7 +246,8 @@ function exportResults(
   startDateStr,
   endDateStr = null,
   dayTypeFilters = [],
-  isExceptFilter = false
+  isExceptFilter = false,
+  excludeCategories = []
 ) {
   // Create results directory if it doesn't exist
   const resultsDir = path.join(__dirname, "json", "results");
@@ -271,6 +276,12 @@ function exportResults(
     );
   }
 
+  // Add excluded categories to filename if specified
+  if (excludeCategories.length > 0) {
+    const excludeString = excludeCategories.join("_");
+    filename = filename.replace(".json", `_exclude_${excludeString}.json`);
+  }
+
   const filePath = path.join(resultsDir, filename);
 
   try {
@@ -293,7 +304,8 @@ function analyzeTimeData(
   endDateStr = null,
   shouldExport = false,
   dayTypeFilters = [],
-  isExceptFilter = false
+  isExceptFilter = false,
+  excludeCategories = []
 ) {
   let dates = [];
   let isDateRange = false;
@@ -391,7 +403,11 @@ function analyzeTimeData(
   // Aggregate and display results
   const sessionAggregates = aggregateSessionTime(allTimeEntries);
   const projectAggregates = aggregateProjectTime(allTimeEntries);
-  const categoryAggregates = aggregateCategoryTime(allTimeEntries, categories);
+  const categoryAggregates = aggregateCategoryTime(
+    allTimeEntries,
+    categories,
+    excludeCategories
+  );
 
   // Calculate grand total first
   const grandTotalSeconds = sessionAggregates.reduce((total, { totalTime }) => {
@@ -460,7 +476,13 @@ function analyzeTimeData(
 
   // Display By Main Categories section
   if (categoryAggregates.length > 0) {
-    console.log("\nBy Main Categories (ordered alphabetically):");
+    let categoryTitle = "\nBy Main Categories (ordered alphabetically):";
+    if (excludeCategories.length > 0) {
+      categoryTitle += `\n[Excluding categories: ${excludeCategories.join(
+        ", "
+      )}]`;
+    }
+    console.log(categoryTitle);
     console.log("===========================================");
 
     // Calculate total categorized time for percentage calculations
@@ -523,6 +545,12 @@ function analyzeTimeData(
           filteredDescription: isExceptFilter
             ? `Filtered to exclude: ${dayTypeFilters.join(", ")}`
             : `Filtered to show only: ${dayTypeFilters.join(", ")}`,
+        }),
+        ...(excludeCategories.length > 0 && {
+          excludedCategories: excludeCategories,
+          excludedCategoriesDescription: `Excluded categories: ${excludeCategories.join(
+            ", "
+          )}`,
         }),
       },
       summary: {
@@ -617,7 +645,8 @@ function analyzeTimeData(
       startDateStr,
       endDateStr,
       dayTypeFilters,
-      isExceptFilter
+      isExceptFilter,
+      excludeCategories
     );
   }
 }
@@ -640,6 +669,9 @@ function main() {
     console.log(
       "  Day type exclusion: node analyzer.js YYYY-MM-DD - YYYY-MM-DD [export] except <dayType1> [dayType2] ..."
     );
+    console.log(
+      "  Category exclusion: node analyzer.js YYYY-MM-DD - YYYY-MM-DD [export] [just|except <dayType>] exclude category <category1> [category2] ..."
+    );
     console.log("");
     console.log("Examples:");
     console.log("  node analyzer.js 2025-10-30");
@@ -654,6 +686,12 @@ function main() {
     console.log(
       "  node analyzer.js 2025-10-27 - 2025-10-29 export except weekend holiday"
     );
+    console.log(
+      "  node analyzer.js 2025-11-01 - 2025-11-10 just workday exclude category overhead waste"
+    );
+    console.log(
+      "  node analyzer.js 2025-11-01 - 2025-11-10 export exclude category overhead"
+    );
     return;
   }
 
@@ -666,6 +704,11 @@ function main() {
   let dayTypeFilters = [];
   let isExceptFilter = false;
 
+  // Check if category exclusion is requested
+  const excludeIndex = args.indexOf("exclude");
+  const categoryIndex = args.indexOf("category");
+  let excludeCategories = [];
+
   if (justIndex !== -1 && exceptIndex !== -1) {
     console.error(
       'Cannot use both "just" and "except" filters in the same command.'
@@ -673,28 +716,53 @@ function main() {
     return;
   }
 
+  // Validate exclude category syntax
+  if (excludeIndex !== -1) {
+    if (categoryIndex === -1 || categoryIndex !== excludeIndex + 1) {
+      console.error(
+        'Invalid syntax: "exclude" must be followed immediately by "category"'
+      );
+      return;
+    }
+
+    // Extract categories after "exclude category"
+    excludeCategories = args
+      .slice(categoryIndex + 1)
+      .filter((arg) => arg !== "export");
+
+    if (excludeCategories.length === 0) {
+      console.error('No categories specified after "exclude category"');
+      return;
+    }
+  }
+
   if (justIndex !== -1) {
-    // Extract day types after "just"
+    // Extract day types after "just" but before "exclude"
+    const endIndex = excludeIndex !== -1 ? excludeIndex : args.length;
     dayTypeFilters = args
-      .slice(justIndex + 1)
+      .slice(justIndex + 1, endIndex)
       .filter((arg) => arg !== "export" && arg !== "except");
     isExceptFilter = false;
   } else if (exceptIndex !== -1) {
-    // Extract day types after "except"
+    // Extract day types after "except" but before "exclude"
+    const endIndex = excludeIndex !== -1 ? excludeIndex : args.length;
     dayTypeFilters = args
-      .slice(exceptIndex + 1)
+      .slice(exceptIndex + 1, endIndex)
       .filter((arg) => arg !== "export" && arg !== "just");
     isExceptFilter = true;
   }
 
-  // Filter out 'export', 'just', 'except' and day types from args
+  // Filter out 'export', 'just', 'except', 'exclude', 'category' and their arguments from args
   const filteredArgs = args.filter((arg, index) => {
     return (
       arg !== "export" &&
       arg !== "just" &&
       arg !== "except" &&
+      arg !== "exclude" &&
+      arg !== "category" &&
       (justIndex === -1 || index < justIndex || index === justIndex) &&
-      (exceptIndex === -1 || index < exceptIndex || index === exceptIndex)
+      (exceptIndex === -1 || index < exceptIndex || index === exceptIndex) &&
+      (excludeIndex === -1 || index < excludeIndex)
     );
   });
 
@@ -706,9 +774,17 @@ function main() {
     return;
   }
 
+  // Check for single date with category exclusion (not allowed)
+  if (filteredArgs.length === 1 && excludeCategories.length > 0) {
+    console.error(
+      "Category exclusion is not available for single dates. Only intervals are supported."
+    );
+    return;
+  }
+
   if (filteredArgs.length === 1) {
     // Single date analysis
-    analyzeTimeData(filteredArgs[0], null, shouldExport, [], false);
+    analyzeTimeData(filteredArgs[0], null, shouldExport, [], false, []);
   } else if (filteredArgs.length === 3 && filteredArgs[1] === "-") {
     // Date range analysis
     analyzeTimeData(
@@ -716,13 +792,14 @@ function main() {
       filteredArgs[2],
       shouldExport,
       dayTypeFilters,
-      isExceptFilter
+      isExceptFilter,
+      excludeCategories
     );
   } else {
     console.error("Invalid arguments. Use:");
     console.error("  Single date: node analyzer.js YYYY-MM-DD [export]");
     console.error(
-      "  Date range:  node analyzer.js YYYY-MM-DD - YYYY-MM-DD [export] [just|except <dayType1> [dayType2] ...]"
+      "  Date range:  node analyzer.js YYYY-MM-DD - YYYY-MM-DD [export] [just|except <dayType1> [dayType2] ...] [exclude category <category1> [category2] ...]"
     );
   }
 }

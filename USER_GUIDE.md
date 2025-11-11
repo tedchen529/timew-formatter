@@ -54,11 +54,18 @@ node analyzer.js YYYY-MM-DD - YYYY-MM-DD [export] just <dayType1> [dayType2] ...
 
 # Exclude specific day types (for date ranges only)
 node analyzer.js YYYY-MM-DD - YYYY-MM-DD [export] except <dayType1> [dayType2] ...
+
+# Exclude specific categories (for date ranges only)
+node analyzer.js YYYY-MM-DD - YYYY-MM-DD [export] exclude category <category1> [category2] ...
+
+# Combine day type filtering with category exclusion
+node analyzer.js YYYY-MM-DD - YYYY-MM-DD [export] just <dayType> exclude category <category1> [category2] ...
 ```
 
 - `[export]`: Optional. If included, exports results to `json/results/`.
 - `just <dayType>`: Optional. Filter results to include only the specified day types (e.g., `workday`).
 - `except <dayType>`: Optional. Filter results to exclude the specified day types (e.g., `weekend`).
+- `exclude category <category>`: Optional. Exclude specific categories from the analysis (e.g., `overhead`, `waste`).
 
 **Examples:**
 
@@ -71,12 +78,18 @@ node analyzer.js 2025-10-27 - 2025-10-29 just workday
 node analyzer.js 2025-10-27 - 2025-10-29 except offday
 node analyzer.js 2025-10-27 - 2025-10-29 export just workday workday-outlier
 node analyzer.js 2025-10-27 - 2025-10-29 export except offday offday-alone
+node analyzer.js 2025-11-01 - 2025-11-10 exclude category overhead waste
+node analyzer.js 2025-11-01 - 2025-11-10 export just workday exclude category overhead
+node analyzer.js 2025-11-01 - 2025-11-10 export exclude category overhead waste
 ```
 
 **Notes:**
 
 - Day type filtering (`just` and `except`) is only available for date ranges, not single dates.
+- Category exclusion (`exclude category`) is only available for date ranges, not single dates.
 - You cannot use both `just` and `except` filters in the same command.
+- When excluding categories, those categories will not appear in the "By Main Categories" section and will not be counted in category totals.
+- Category exclusion can be combined with day type filtering for more precise analysis.
 - Results are printed to the console and optionally exported as JSON.
 
 ---
