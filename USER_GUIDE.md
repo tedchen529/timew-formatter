@@ -94,13 +94,15 @@ node analyzer.js 2025-11-01 - 2025-11-10 export exclude category overhead waste
 
 ---
 
-## 3. Checking Categories and Projects (`check.js`)
+## 3. Checking Categories, Projects, and Sessions (`check.js`)
 
 **Purpose:**
 
 - Checks for uncategorized session names.
 - Lists all projects and their activity periods.
 - Shows detailed stats for a specific project.
+- Lists all sessions and their activity periods.
+- Shows detailed stats for a specific session with optional date filtering.
 
 **Usage:**
 
@@ -113,6 +115,18 @@ node check.js projects
 
 # Show details for a specific project
 node check.js projects <project-name>
+
+# List all sessions
+node check.js sessions
+
+# Show details for a specific session
+node check.js sessions <session-name>
+
+# Show session details for a specific date
+node check.js sessions <session-name> YYYY-MM-DD
+
+# Show session details for a date range
+node check.js sessions <session-name> YYYY-MM-DD - YYYY-MM-DD
 ```
 
 **Examples:**
@@ -121,6 +135,10 @@ node check.js projects <project-name>
 node check.js categories
 node check.js projects
 node check.js projects "My Project"
+node check.js sessions
+node check.js sessions "reset-in-restroom"
+node check.js sessions "reset-in-restroom" 2025-11-05
+node check.js sessions "reset-in-restroom" 2025-11-01 - 2025-11-10
 ```
 
 **What it does:**
@@ -128,6 +146,10 @@ node check.js projects "My Project"
 - `categories`: Lists session names in your data that are not assigned to any category in `categories.json`.
 - `projects`: Lists all projects, total time, and active periods, sorted by most recent activity.
 - `projects <project-name>`: Shows total time, entry count, date range, and daily breakdown for the specified project.
+- `sessions`: Lists all sessions, total time, and active periods, sorted by most recent activity.
+- `sessions <session-name>`: Shows total time, entry count, date range, and daily breakdown for the specified session.
+- `sessions <session-name> <date>`: Shows session stats filtered to a specific date.
+- `sessions <session-name> <start-date> - <end-date>`: Shows session stats filtered to a date range.
 
 ---
 
