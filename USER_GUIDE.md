@@ -51,10 +51,14 @@ node analyzer.js YYYY-MM-DD - YYYY-MM-DD [export]
 
 # Filter by day type (for date ranges only)
 node analyzer.js YYYY-MM-DD - YYYY-MM-DD [export] just <dayType1> [dayType2] ...
+
+# Exclude specific day types (for date ranges only)
+node analyzer.js YYYY-MM-DD - YYYY-MM-DD [export] except <dayType1> [dayType2] ...
 ```
 
 - `[export]`: Optional. If included, exports results to `json/results/`.
-- `just <dayType>`: Optional. Filter results to specific day types (e.g., `workday`).
+- `just <dayType>`: Optional. Filter results to include only the specified day types (e.g., `workday`).
+- `except <dayType>`: Optional. Filter results to exclude the specified day types (e.g., `weekend`).
 
 **Examples:**
 
@@ -64,12 +68,15 @@ node analyzer.js 2025-10-30 export
 node analyzer.js 2025-10-27 - 2025-10-29
 node analyzer.js 2025-10-27 - 2025-10-29 export
 node analyzer.js 2025-10-27 - 2025-10-29 just workday
+node analyzer.js 2025-10-27 - 2025-10-29 except offday
 node analyzer.js 2025-10-27 - 2025-10-29 export just workday workday-outlier
+node analyzer.js 2025-10-27 - 2025-10-29 export except offday offday-alone
 ```
 
 **Notes:**
 
-- Day type filtering is only available for date ranges, not single dates.
+- Day type filtering (`just` and `except`) is only available for date ranges, not single dates.
+- You cannot use both `just` and `except` filters in the same command.
 - Results are printed to the console and optionally exported as JSON.
 
 ---

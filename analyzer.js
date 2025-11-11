@@ -1,5 +1,5 @@
-const fs = require('fs')
-const path = require('path')
+const fs = require("fs");
+const path = require("path");
 
 /**
  * Load categories configuration
@@ -7,22 +7,22 @@ const path = require('path')
 function loadCategories() {
   const categoriesPath = path.join(
     __dirname,
-    'json',
-    'settings',
-    'categories.json'
-  )
+    "json",
+    "settings",
+    "categories.json"
+  );
 
   if (!fs.existsSync(categoriesPath)) {
-    console.warn('Warning: Categories file not found:', categoriesPath)
-    return {}
+    console.warn("Warning: Categories file not found:", categoriesPath);
+    return {};
   }
 
   try {
-    const data = JSON.parse(fs.readFileSync(categoriesPath, 'utf8'))
-    return data[0] // Categories are in the first object of the array
+    const data = JSON.parse(fs.readFileSync(categoriesPath, "utf8"));
+    return data[0]; // Categories are in the first object of the array
   } catch (error) {
-    console.error('Error reading categories file:', error.message)
-    return {}
+    console.error("Error reading categories file:", error.message);
+    return {};
   }
 }
 
@@ -32,85 +32,85 @@ function loadCategories() {
 function getMainCategory(sessionName, categories) {
   for (const [categoryName, sessionList] of Object.entries(categories)) {
     if (sessionList.includes(sessionName)) {
-      return categoryName
+      return categoryName;
     }
   }
-  return 'uncategorized' // For sessions not found in any category
+  return "uncategorized"; // For sessions not found in any category
 }
 
 /**
  * Parse time string in format HH:MM:SS to seconds
  */
 function parseTimeToSeconds(timeStr) {
-  const [hours, minutes, seconds] = timeStr.split(':').map(Number)
-  return hours * 3600 + minutes * 60 + seconds
+  const [hours, minutes, seconds] = timeStr.split(":").map(Number);
+  return hours * 3600 + minutes * 60 + seconds;
 }
 
 /**
  * Convert seconds back to HH:MM:SS format
  */
 function secondsToTimeFormat(totalSeconds) {
-  const hours = Math.floor(totalSeconds / 3600)
-  const minutes = Math.floor((totalSeconds % 3600) / 60)
-  const seconds = totalSeconds % 60
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
 
-  return `${hours.toString().padStart(2, '0')}:${minutes
+  return `${hours.toString().padStart(2, "0")}:${minutes
     .toString()
-    .padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+    .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
 }
 
 /**
  * Parse date string in format YYYY-MM-DD
  */
 function parseDate(dateStr) {
-  return new Date(dateStr)
+  return new Date(dateStr);
 }
 
 /**
  * Generate array of dates between start and end date (inclusive)
  */
 function getDatesBetween(startDate, endDate) {
-  const dates = []
-  const currentDate = new Date(startDate)
+  const dates = [];
+  const currentDate = new Date(startDate);
 
   while (currentDate <= endDate) {
-    dates.push(new Date(currentDate))
-    currentDate.setDate(currentDate.getDate() + 1)
+    dates.push(new Date(currentDate));
+    currentDate.setDate(currentDate.getDate() + 1);
   }
 
-  return dates
+  return dates;
 }
 
 /**
  * Format date to YYYY-MM-DD string
  */
 function formatDate(date) {
-  return date.toISOString().split('T')[0]
+  return date.toISOString().split("T")[0];
 }
 
 /**
  * Load and parse JSON file for a specific date
  */
 function loadTimeDataForDate(date) {
-  const dateStr = formatDate(date).replace(/-/g, '')
+  const dateStr = formatDate(date).replace(/-/g, "");
   const filePath = path.join(
     __dirname,
-    'json',
-    'clean',
+    "json",
+    "clean",
     `timew_clean_${dateStr}.json`
-  )
+  );
 
   if (!fs.existsSync(filePath)) {
-    console.warn(`Warning: File not found for date ${dateStr}: ${filePath}`)
-    return []
+    console.warn(`Warning: File not found for date ${dateStr}: ${filePath}`);
+    return [];
   }
 
   try {
-    const data = JSON.parse(fs.readFileSync(filePath, 'utf8'))
-    return data
+    const data = JSON.parse(fs.readFileSync(filePath, "utf8"));
+    return data;
   } catch (error) {
-    console.error(`Error reading file for date ${dateStr}:`, error.message)
-    return []
+    console.error(`Error reading file for date ${dateStr}:`, error.message);
+    return [];
   }
 }
 
@@ -118,29 +118,29 @@ function loadTimeDataForDate(date) {
  * Extract day type from a clean JSON file
  */
 function getDayTypeForDate(date) {
-  const dateStr = formatDate(date).replace(/-/g, '')
+  const dateStr = formatDate(date).replace(/-/g, "");
   const filePath = path.join(
     __dirname,
-    'json',
-    'clean',
+    "json",
+    "clean",
     `timew_clean_${dateStr}.json`
-  )
+  );
 
   if (!fs.existsSync(filePath)) {
-    return null
+    return null;
   }
 
   try {
-    const data = JSON.parse(fs.readFileSync(filePath, 'utf8'))
+    const data = JSON.parse(fs.readFileSync(filePath, "utf8"));
     // The day type should be in the last element of the array
-    const lastElement = data[data.length - 1]
+    const lastElement = data[data.length - 1];
     if (lastElement && lastElement.dayType) {
-      return lastElement.dayType
+      return lastElement.dayType;
     }
-    return null
+    return null;
   } catch (error) {
-    console.error(`Error reading day type for date ${dateStr}:`, error.message)
-    return null
+    console.error(`Error reading day type for date ${dateStr}:`, error.message);
+    return null;
   }
 }
 
@@ -148,18 +148,18 @@ function getDayTypeForDate(date) {
  * Aggregate time data for sessions
  */
 function aggregateSessionTime(timeEntries) {
-  const sessionTotals = {}
+  const sessionTotals = {};
 
   timeEntries.forEach((entry) => {
-    const sessionName = entry.session_name
-    const timeInSeconds = parseTimeToSeconds(entry.time)
+    const sessionName = entry.session_name;
+    const timeInSeconds = parseTimeToSeconds(entry.time);
 
     if (!sessionTotals[sessionName]) {
-      sessionTotals[sessionName] = 0
+      sessionTotals[sessionName] = 0;
     }
 
-    sessionTotals[sessionName] += timeInSeconds
-  })
+    sessionTotals[sessionName] += timeInSeconds;
+  });
 
   // Convert back to time format and sort alphabetically
   const sortedSessions = Object.keys(sessionTotals)
@@ -167,29 +167,29 @@ function aggregateSessionTime(timeEntries) {
     .map((sessionName) => ({
       session: sessionName,
       totalTime: secondsToTimeFormat(sessionTotals[sessionName]),
-    }))
+    }));
 
-  return sortedSessions
+  return sortedSessions;
 }
 
 /**
  * Aggregate time data for projects
  */
 function aggregateProjectTime(timeEntries) {
-  const projectTotals = {}
+  const projectTotals = {};
 
   timeEntries.forEach((entry) => {
     if (entry.project) {
-      const projectName = entry.project
-      const timeInSeconds = parseTimeToSeconds(entry.time)
+      const projectName = entry.project;
+      const timeInSeconds = parseTimeToSeconds(entry.time);
 
       if (!projectTotals[projectName]) {
-        projectTotals[projectName] = 0
+        projectTotals[projectName] = 0;
       }
 
-      projectTotals[projectName] += timeInSeconds
+      projectTotals[projectName] += timeInSeconds;
     }
-  })
+  });
 
   // Convert back to time format and sort alphabetically
   const sortedProjects = Object.keys(projectTotals)
@@ -197,31 +197,31 @@ function aggregateProjectTime(timeEntries) {
     .map((projectName) => ({
       project: projectName,
       totalTime: secondsToTimeFormat(projectTotals[projectName]),
-    }))
+    }));
 
-  return sortedProjects
+  return sortedProjects;
 }
 
 /**
  * Aggregate time data by main categories (excluding uncategorized)
  */
 function aggregateCategoryTime(timeEntries, categories) {
-  const categoryTotals = {}
+  const categoryTotals = {};
 
   timeEntries.forEach((entry) => {
-    const sessionName = entry.session_name
-    const category = getMainCategory(sessionName, categories)
-    const timeInSeconds = parseTimeToSeconds(entry.time)
+    const sessionName = entry.session_name;
+    const category = getMainCategory(sessionName, categories);
+    const timeInSeconds = parseTimeToSeconds(entry.time);
 
     // Only include categorized entries (exclude 'uncategorized')
-    if (category !== 'uncategorized') {
+    if (category !== "uncategorized") {
       if (!categoryTotals[category]) {
-        categoryTotals[category] = 0
+        categoryTotals[category] = 0;
       }
 
-      categoryTotals[category] += timeInSeconds
+      categoryTotals[category] += timeInSeconds;
     }
-  })
+  });
 
   // Convert back to time format and sort alphabetically
   const sortedCategories = Object.keys(categoryTotals)
@@ -229,9 +229,9 @@ function aggregateCategoryTime(timeEntries, categories) {
     .map((categoryName) => ({
       category: categoryName,
       totalTime: secondsToTimeFormat(categoryTotals[categoryName]),
-    }))
+    }));
 
-  return sortedCategories
+  return sortedCategories;
 }
 
 /**
@@ -241,38 +241,47 @@ function exportResults(
   analysisResults,
   startDateStr,
   endDateStr = null,
-  dayTypeFilters = []
+  dayTypeFilters = [],
+  isExceptFilter = false
 ) {
   // Create results directory if it doesn't exist
-  const resultsDir = path.join(__dirname, 'json', 'results')
+  const resultsDir = path.join(__dirname, "json", "results");
   if (!fs.existsSync(resultsDir)) {
-    fs.mkdirSync(resultsDir, { recursive: true })
+    fs.mkdirSync(resultsDir, { recursive: true });
   }
 
   // Generate filename based on date range
-  let filename
+  let filename;
   if (endDateStr === null) {
-    const dateFormatted = startDateStr.replace(/-/g, '')
-    filename = `timew_results_${dateFormatted}-${dateFormatted}.json`
+    const dateFormatted = startDateStr.replace(/-/g, "");
+    filename = `timew_results_${dateFormatted}-${dateFormatted}.json`;
   } else {
-    const startFormatted = startDateStr.replace(/-/g, '')
-    const endFormatted = endDateStr.replace(/-/g, '')
-    filename = `timew_results_${startFormatted}-${endFormatted}.json`
+    const startFormatted = startDateStr.replace(/-/g, "");
+    const endFormatted = endDateStr.replace(/-/g, "");
+    filename = `timew_results_${startFormatted}-${endFormatted}.json`;
   }
 
   // Add day type filter to filename if specified
   if (dayTypeFilters.length > 0) {
-    const dayTypeString = dayTypeFilters.join('_')
-    filename = filename.replace('.json', `_just_${dayTypeString}.json`)
+    const dayTypeString = dayTypeFilters.join("_");
+    const filterType = isExceptFilter ? "except" : "just";
+    filename = filename.replace(
+      ".json",
+      `_${filterType}_${dayTypeString}.json`
+    );
   }
 
-  const filePath = path.join(resultsDir, filename)
+  const filePath = path.join(resultsDir, filename);
 
   try {
-    fs.writeFileSync(filePath, JSON.stringify(analysisResults, null, 2), 'utf8')
-    console.log(`\nResults exported to: ${filePath}`)
+    fs.writeFileSync(
+      filePath,
+      JSON.stringify(analysisResults, null, 2),
+      "utf8"
+    );
+    console.log(`\nResults exported to: ${filePath}`);
   } catch (error) {
-    console.error('Error exporting results:', error.message)
+    console.error("Error exporting results:", error.message);
   }
 }
 
@@ -283,209 +292,226 @@ function analyzeTimeData(
   startDateStr,
   endDateStr = null,
   shouldExport = false,
-  dayTypeFilters = []
+  dayTypeFilters = [],
+  isExceptFilter = false
 ) {
-  let dates = []
-  let isDateRange = false
+  let dates = [];
+  let isDateRange = false;
 
   if (endDateStr === null) {
     // Single date analysis
-    dates = [parseDate(startDateStr)]
-    console.log(`Analyzing time data for ${startDateStr}`)
+    dates = [parseDate(startDateStr)];
+    console.log(`Analyzing time data for ${startDateStr}`);
   } else {
     // Date range analysis
-    const startDate = parseDate(startDateStr)
-    const endDate = parseDate(endDateStr)
-    dates = getDatesBetween(startDate, endDate)
-    isDateRange = true
-    console.log(`Analyzing time data from ${startDateStr} to ${endDateStr}`)
+    const startDate = parseDate(startDateStr);
+    const endDate = parseDate(endDateStr);
+    dates = getDatesBetween(startDate, endDate);
+    isDateRange = true;
+    console.log(`Analyzing time data from ${startDateStr} to ${endDateStr}`);
   }
 
   // If day type filters are specified, filter dates by day type
   if (dayTypeFilters.length > 0) {
-    const filteredDates = []
-    const matchingDayTypes = []
+    const filteredDates = [];
+    const matchingDayTypes = [];
 
     dates.forEach((date) => {
-      const dayType = getDayTypeForDate(date)
-      if (dayType && dayTypeFilters.includes(dayType)) {
-        filteredDates.push(date)
+      const dayType = getDayTypeForDate(date);
+      let shouldInclude = false;
+
+      if (isExceptFilter) {
+        // For "except" filter, include dates that DON'T match the specified day types
+        shouldInclude = dayType && !dayTypeFilters.includes(dayType);
+      } else {
+        // For "just" filter, include dates that DO match the specified day types
+        shouldInclude = dayType && dayTypeFilters.includes(dayType);
+      }
+
+      if (shouldInclude) {
+        filteredDates.push(date);
         matchingDayTypes.push({
           date: formatDate(date),
           dayType: dayType,
-        })
+        });
       }
-    })
+    });
 
     if (filteredDates.length === 0) {
+      const filterType = isExceptFilter ? "except" : "just";
       console.log(
-        `No results found for day type(s): ${dayTypeFilters.join(', ')}`
-      )
-      return
+        `No results found for day type filter "${filterType}": ${dayTypeFilters.join(
+          ", "
+        )}`
+      );
+      return;
     }
 
-    dates = filteredDates
+    dates = filteredDates;
+    const filterType = isExceptFilter ? "excluding" : "matching";
     console.log(
       `Filtered to ${
         filteredDates.length
-      } day(s) matching day type(s): ${dayTypeFilters.join(', ')}`
-    )
+      } day(s) ${filterType} day type(s): ${dayTypeFilters.join(", ")}`
+    );
     matchingDayTypes.forEach(({ date, dayType }) => {
-      console.log(`  - ${date}: ${dayType}`)
-    })
-    console.log('')
+      console.log(`  - ${date}: ${dayType}`);
+    });
+    console.log("");
   }
 
   // Collect all time entries from all dates
-  let allTimeEntries = []
-  let filesFound = 0
+  let allTimeEntries = [];
+  let filesFound = 0;
 
   dates.forEach((date) => {
-    const dateEntries = loadTimeDataForDate(date)
+    const dateEntries = loadTimeDataForDate(date);
     if (dateEntries.length > 0) {
       // Filter out the day type entry (it doesn't have session_name or time fields)
       const timeEntries = dateEntries.filter(
         (entry) => entry.session_name && entry.time
-      )
-      allTimeEntries = allTimeEntries.concat(timeEntries)
-      filesFound++
+      );
+      allTimeEntries = allTimeEntries.concat(timeEntries);
+      filesFound++;
     }
-  })
+  });
 
   if (allTimeEntries.length === 0) {
-    console.log('No time data found for the specified date(s).')
-    return
+    console.log("No time data found for the specified date(s).");
+    return;
   }
 
   console.log(
     `\nFound data from ${filesFound} file(s) with ${allTimeEntries.length} total entries.\n`
-  )
+  );
 
   // Load categories for main category analysis
-  const categories = loadCategories()
+  const categories = loadCategories();
 
   // Aggregate and display results
-  const sessionAggregates = aggregateSessionTime(allTimeEntries)
-  const projectAggregates = aggregateProjectTime(allTimeEntries)
-  const categoryAggregates = aggregateCategoryTime(allTimeEntries, categories)
+  const sessionAggregates = aggregateSessionTime(allTimeEntries);
+  const projectAggregates = aggregateProjectTime(allTimeEntries);
+  const categoryAggregates = aggregateCategoryTime(allTimeEntries, categories);
 
   // Calculate grand total first
   const grandTotalSeconds = sessionAggregates.reduce((total, { totalTime }) => {
-    return total + parseTimeToSeconds(totalTime)
-  }, 0)
+    return total + parseTimeToSeconds(totalTime);
+  }, 0);
 
-  console.log('Session Time Aggregates (ordered alphabetically):')
-  console.log('================================================')
+  console.log("Session Time Aggregates (ordered alphabetically):");
+  console.log("================================================");
 
   sessionAggregates.forEach(({ session, totalTime }) => {
-    const sessionSeconds = parseTimeToSeconds(totalTime)
-    const percentage = ((sessionSeconds / grandTotalSeconds) * 100).toFixed(1)
+    const sessionSeconds = parseTimeToSeconds(totalTime);
+    const percentage = ((sessionSeconds / grandTotalSeconds) * 100).toFixed(1);
 
-    let displayTime = totalTime
+    let displayTime = totalTime;
     if (isDateRange && dates.length > 1) {
-      const averageSeconds = Math.round(sessionSeconds / dates.length)
-      const averageTime = secondsToTimeFormat(averageSeconds)
-      displayTime = `${totalTime}/${averageTime}`
+      const averageSeconds = Math.round(sessionSeconds / dates.length);
+      const averageTime = secondsToTimeFormat(averageSeconds);
+      displayTime = `${totalTime}/${averageTime}`;
     }
 
-    console.log(`${session}: ${displayTime} (${percentage}%)`)
-  })
+    console.log(`${session}: ${displayTime} (${percentage}%)`);
+  });
 
-  console.log('================================================')
+  console.log("================================================");
   console.log(
     `Total time across all sessions: ${secondsToTimeFormat(grandTotalSeconds)}`
-  )
+  );
 
   // Display Projects section if there are any projects
   if (projectAggregates.length > 0) {
-    console.log('\nProjects (ordered alphabetically):')
-    console.log('==================================')
+    console.log("\nProjects (ordered alphabetically):");
+    console.log("==================================");
 
     projectAggregates.forEach(({ project, totalTime }) => {
-      const projectSeconds = parseTimeToSeconds(totalTime)
-      const percentage = ((projectSeconds / grandTotalSeconds) * 100).toFixed(1)
+      const projectSeconds = parseTimeToSeconds(totalTime);
+      const percentage = ((projectSeconds / grandTotalSeconds) * 100).toFixed(
+        1
+      );
 
-      let displayTime = totalTime
+      let displayTime = totalTime;
       if (isDateRange && dates.length > 1) {
-        const averageSeconds = Math.round(projectSeconds / dates.length)
-        const averageTime = secondsToTimeFormat(averageSeconds)
-        displayTime = `${totalTime}/${averageTime}`
+        const averageSeconds = Math.round(projectSeconds / dates.length);
+        const averageTime = secondsToTimeFormat(averageSeconds);
+        displayTime = `${totalTime}/${averageTime}`;
       }
 
-      console.log(`${project}: ${displayTime} (${percentage}%)`)
-    })
+      console.log(`${project}: ${displayTime} (${percentage}%)`);
+    });
 
-    console.log('==================================')
+    console.log("==================================");
 
     // Calculate total project time
     const totalProjectSeconds = projectAggregates.reduce(
       (total, { totalTime }) => {
-        return total + parseTimeToSeconds(totalTime)
+        return total + parseTimeToSeconds(totalTime);
       },
       0
-    )
+    );
 
     console.log(
       `Total time across all projects: ${secondsToTimeFormat(
         totalProjectSeconds
       )}`
-    )
+    );
   }
 
   // Display By Main Categories section
   if (categoryAggregates.length > 0) {
-    console.log('\nBy Main Categories (ordered alphabetically):')
-    console.log('===========================================')
+    console.log("\nBy Main Categories (ordered alphabetically):");
+    console.log("===========================================");
 
     // Calculate total categorized time for percentage calculations
     const totalCategorizedSeconds = categoryAggregates.reduce(
       (total, { totalTime }) => {
-        return total + parseTimeToSeconds(totalTime)
+        return total + parseTimeToSeconds(totalTime);
       },
       0
-    )
+    );
 
     categoryAggregates.forEach(({ category, totalTime }) => {
-      const categorySeconds = parseTimeToSeconds(totalTime)
+      const categorySeconds = parseTimeToSeconds(totalTime);
       const percentage = (
         (categorySeconds / totalCategorizedSeconds) *
         100
-      ).toFixed(1)
+      ).toFixed(1);
 
-      let displayTime = totalTime
+      let displayTime = totalTime;
       if (isDateRange && dates.length > 1) {
-        const averageSeconds = Math.round(categorySeconds / dates.length)
-        const averageTime = secondsToTimeFormat(averageSeconds)
-        displayTime = `${totalTime}/${averageTime}`
+        const averageSeconds = Math.round(categorySeconds / dates.length);
+        const averageTime = secondsToTimeFormat(averageSeconds);
+        displayTime = `${totalTime}/${averageTime}`;
       }
 
-      console.log(`${category}: ${displayTime} (${percentage}%)`)
-    })
+      console.log(`${category}: ${displayTime} (${percentage}%)`);
+    });
 
-    console.log('===========================================')
+    console.log("===========================================");
 
     console.log(
       `Total time across all categories: ${secondsToTimeFormat(
         totalCategorizedSeconds
       )}`
-    )
+    );
   }
 
   // Export results if requested
   if (shouldExport) {
     const totalProjectSeconds = projectAggregates.reduce(
       (total, { totalTime }) => {
-        return total + parseTimeToSeconds(totalTime)
+        return total + parseTimeToSeconds(totalTime);
       },
       0
-    )
+    );
 
     const totalCategorySeconds = categoryAggregates.reduce(
       (total, { totalTime }) => {
-        return total + parseTimeToSeconds(totalTime)
+        return total + parseTimeToSeconds(totalTime);
       },
       0
-    )
+    );
 
     const analysisResults = {
       dateRange: {
@@ -493,9 +519,10 @@ function analyzeTimeData(
         endDate: endDateStr,
         ...(dayTypeFilters.length > 0 && {
           dayTypeFilter: dayTypeFilters,
-          filteredDescription: `Filtered to show only: ${dayTypeFilters.join(
-            ', '
-          )}`,
+          filterType: isExceptFilter ? "except" : "just",
+          filteredDescription: isExceptFilter
+            ? `Filtered to exclude: ${dayTypeFilters.join(", ")}`
+            : `Filtered to show only: ${dayTypeFilters.join(", ")}`,
         }),
       },
       summary: {
@@ -519,73 +546,79 @@ function analyzeTimeData(
           }),
       },
       sessions: sessionAggregates.map(({ session, totalTime }) => {
-        const sessionSeconds = parseTimeToSeconds(totalTime)
+        const sessionSeconds = parseTimeToSeconds(totalTime);
         const percentage = ((sessionSeconds / grandTotalSeconds) * 100).toFixed(
           1
-        )
+        );
         const sessionData = {
           sessionName: session,
           totalTime: totalTime,
           totalTimeSeconds: sessionSeconds,
           percentage: `${percentage}%`,
-        }
+        };
 
         // Add average time if it's a date range
         if (isDateRange && dates.length > 1) {
-          const averageSeconds = Math.round(sessionSeconds / dates.length)
-          sessionData.averageTime = secondsToTimeFormat(averageSeconds)
-          sessionData.averageTimeSeconds = averageSeconds
+          const averageSeconds = Math.round(sessionSeconds / dates.length);
+          sessionData.averageTime = secondsToTimeFormat(averageSeconds);
+          sessionData.averageTimeSeconds = averageSeconds;
         }
 
-        return sessionData
+        return sessionData;
       }),
       projects: projectAggregates.map(({ project, totalTime }) => {
-        const projectSeconds = parseTimeToSeconds(totalTime)
+        const projectSeconds = parseTimeToSeconds(totalTime);
         const percentage = ((projectSeconds / grandTotalSeconds) * 100).toFixed(
           1
-        )
+        );
         const projectData = {
           projectName: project,
           totalTime: totalTime,
           totalTimeSeconds: projectSeconds,
           percentage: `${percentage}%`,
-        }
+        };
 
         // Add average time if it's a date range
         if (isDateRange && dates.length > 1) {
-          const averageSeconds = Math.round(projectSeconds / dates.length)
-          projectData.averageTime = secondsToTimeFormat(averageSeconds)
-          projectData.averageTimeSeconds = averageSeconds
+          const averageSeconds = Math.round(projectSeconds / dates.length);
+          projectData.averageTime = secondsToTimeFormat(averageSeconds);
+          projectData.averageTimeSeconds = averageSeconds;
         }
 
-        return projectData
+        return projectData;
       }),
       categories: categoryAggregates.map(({ category, totalTime }) => {
-        const categorySeconds = parseTimeToSeconds(totalTime)
+        const categorySeconds = parseTimeToSeconds(totalTime);
         const percentage = (
           (categorySeconds / totalCategorySeconds) *
           100
-        ).toFixed(1)
+        ).toFixed(1);
         const categoryData = {
           categoryName: category,
           totalTime: totalTime,
           totalTimeSeconds: categorySeconds,
           percentage: `${percentage}%`,
-        }
+        };
 
         // Add average time if it's a date range
         if (isDateRange && dates.length > 1) {
-          const averageSeconds = Math.round(categorySeconds / dates.length)
-          categoryData.averageTime = secondsToTimeFormat(averageSeconds)
-          categoryData.averageTimeSeconds = averageSeconds
+          const averageSeconds = Math.round(categorySeconds / dates.length);
+          categoryData.averageTime = secondsToTimeFormat(averageSeconds);
+          categoryData.averageTimeSeconds = averageSeconds;
         }
 
-        return categoryData
+        return categoryData;
       }),
       generatedAt: new Date().toISOString(),
-    }
+    };
 
-    exportResults(analysisResults, startDateStr, endDateStr, dayTypeFilters)
+    exportResults(
+      analysisResults,
+      startDateStr,
+      endDateStr,
+      dayTypeFilters,
+      isExceptFilter
+    );
   }
 }
 
@@ -593,82 +626,110 @@ function analyzeTimeData(
  * Parse command line arguments and run analysis
  */
 function main() {
-  const args = process.argv.slice(2)
+  const args = process.argv.slice(2);
 
   if (args.length === 0) {
-    console.log('Usage:')
-    console.log('  Single date: node analyzer.js YYYY-MM-DD [export]')
+    console.log("Usage:");
+    console.log("  Single date: node analyzer.js YYYY-MM-DD [export]");
     console.log(
-      '  Date range:  node analyzer.js YYYY-MM-DD - YYYY-MM-DD [export]'
-    )
+      "  Date range:  node analyzer.js YYYY-MM-DD - YYYY-MM-DD [export]"
+    );
     console.log(
-      '  Day type filter: node analyzer.js YYYY-MM-DD - YYYY-MM-DD [export] just <dayType1> [dayType2] ...'
-    )
-    console.log('')
-    console.log('Examples:')
-    console.log('  node analyzer.js 2025-10-30')
-    console.log('  node analyzer.js 2025-10-30 export')
-    console.log('  node analyzer.js 2025-09-30 - 2025-10-30')
-    console.log('  node analyzer.js 2025-09-30 - 2025-10-30 export')
-    console.log('  node analyzer.js 2025-10-27 - 2025-10-29 just workday')
+      "  Day type filter: node analyzer.js YYYY-MM-DD - YYYY-MM-DD [export] just <dayType1> [dayType2] ..."
+    );
     console.log(
-      '  node analyzer.js 2025-10-27 - 2025-10-29 export just workday workday-outlier'
-    )
-    return
+      "  Day type exclusion: node analyzer.js YYYY-MM-DD - YYYY-MM-DD [export] except <dayType1> [dayType2] ..."
+    );
+    console.log("");
+    console.log("Examples:");
+    console.log("  node analyzer.js 2025-10-30");
+    console.log("  node analyzer.js 2025-10-30 export");
+    console.log("  node analyzer.js 2025-09-30 - 2025-10-30");
+    console.log("  node analyzer.js 2025-09-30 - 2025-10-30 export");
+    console.log("  node analyzer.js 2025-10-27 - 2025-10-29 just workday");
+    console.log("  node analyzer.js 2025-10-27 - 2025-10-29 except weekend");
+    console.log(
+      "  node analyzer.js 2025-10-27 - 2025-10-29 export just workday workday-outlier"
+    );
+    console.log(
+      "  node analyzer.js 2025-10-27 - 2025-10-29 export except weekend holiday"
+    );
+    return;
   }
 
   // Check if export is requested
-  const shouldExport = args.includes('export')
+  const shouldExport = args.includes("export");
 
   // Check if day type filtering is requested
-  const justIndex = args.indexOf('just')
-  let dayTypeFilters = []
+  const justIndex = args.indexOf("just");
+  const exceptIndex = args.indexOf("except");
+  let dayTypeFilters = [];
+  let isExceptFilter = false;
+
+  if (justIndex !== -1 && exceptIndex !== -1) {
+    console.error(
+      'Cannot use both "just" and "except" filters in the same command.'
+    );
+    return;
+  }
 
   if (justIndex !== -1) {
     // Extract day types after "just"
-    dayTypeFilters = args.slice(justIndex + 1).filter((arg) => arg !== 'export')
+    dayTypeFilters = args
+      .slice(justIndex + 1)
+      .filter((arg) => arg !== "export" && arg !== "except");
+    isExceptFilter = false;
+  } else if (exceptIndex !== -1) {
+    // Extract day types after "except"
+    dayTypeFilters = args
+      .slice(exceptIndex + 1)
+      .filter((arg) => arg !== "export" && arg !== "just");
+    isExceptFilter = true;
   }
 
-  // Filter out 'export' and 'just' and day types from args
+  // Filter out 'export', 'just', 'except' and day types from args
   const filteredArgs = args.filter((arg, index) => {
     return (
-      arg !== 'export' &&
-      arg !== 'just' &&
-      (justIndex === -1 || index < justIndex || index === justIndex)
-    )
-  })
+      arg !== "export" &&
+      arg !== "just" &&
+      arg !== "except" &&
+      (justIndex === -1 || index < justIndex || index === justIndex) &&
+      (exceptIndex === -1 || index < exceptIndex || index === exceptIndex)
+    );
+  });
 
   // Check for single date with day type filter (not allowed)
   if (filteredArgs.length === 1 && dayTypeFilters.length > 0) {
     console.error(
-      'Day type filtering is not available for single dates. Only intervals are supported.'
-    )
-    return
+      "Day type filtering is not available for single dates. Only intervals are supported."
+    );
+    return;
   }
 
   if (filteredArgs.length === 1) {
     // Single date analysis
-    analyzeTimeData(filteredArgs[0], null, shouldExport)
-  } else if (filteredArgs.length === 3 && filteredArgs[1] === '-') {
+    analyzeTimeData(filteredArgs[0], null, shouldExport, [], false);
+  } else if (filteredArgs.length === 3 && filteredArgs[1] === "-") {
     // Date range analysis
     analyzeTimeData(
       filteredArgs[0],
       filteredArgs[2],
       shouldExport,
-      dayTypeFilters
-    )
+      dayTypeFilters,
+      isExceptFilter
+    );
   } else {
-    console.error('Invalid arguments. Use:')
-    console.error('  Single date: node analyzer.js YYYY-MM-DD [export]')
+    console.error("Invalid arguments. Use:");
+    console.error("  Single date: node analyzer.js YYYY-MM-DD [export]");
     console.error(
-      '  Date range:  node analyzer.js YYYY-MM-DD - YYYY-MM-DD [export] [just <dayType1> [dayType2] ...]'
-    )
+      "  Date range:  node analyzer.js YYYY-MM-DD - YYYY-MM-DD [export] [just|except <dayType1> [dayType2] ...]"
+    );
   }
 }
 
 // Run the main function if this file is executed directly
 if (require.main === module) {
-  main()
+  main();
 }
 
 module.exports = {
@@ -682,4 +743,4 @@ module.exports = {
   loadCategories,
   getMainCategory,
   getDayTypeForDate,
-}
+};
