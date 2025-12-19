@@ -25,14 +25,24 @@ module.exports = async function fetchAll() {
 `);
 
   const lastEndTime = res.rows[0]?.endTime;
-  console.log("Last entry:", lastEndTime);
+  // Convert to Taipei time for display (UTC+8)
+  const lastEndTimeTaipei = lastEndTime
+    ? new Date(new Date(lastEndTime).getTime() + 8 * 60 * 60 * 1000)
+    : null;
+  console.log(
+    "Last entry:",
+    lastEndTimeTaipei?.toISOString().replace("T", " ").slice(0, 19) +
+      " (Taipei)"
+  );
 
   const path = require("path");
   let startDate, endDate, jsonFile, wslCmd, output, jsonPath, data;
   if (!lastEndTime) {
     // No entries found, fetch all data from WSL
     startDate = process.env.START_DATE; // Set your desired start date
-    endDate = new Date(Date.now() - 86400000).toISOString().slice(0, 10); // Yesterday
+    // Use Taipei time for end date
+    const nowTaipei = new Date(new Date().getTime() + 8 * 60 * 60 * 1000);
+    endDate = nowTaipei.toISOString().slice(0, 10); // Today in Taipei
     jsonFile = `timew_${startDate.replace(/-/g, "")}-${endDate.replace(
       /-/g,
       ""
@@ -61,12 +71,14 @@ module.exports = async function fetchAll() {
     fs.unlinkSync(jsonPath); // Delete the JSON file
   } else {
     // Entries exist, fetch only new data from WSL after lastEndTime
-    // Use ISO format for both start and end, no dash, just a space
-    const last = new Date(lastEndTime);
-    startDate = last.toISOString().slice(0, 19); // YYYY-MM-DDTHH:MM:SS
-    // End date: yesterday at 23:59:59 (ISO format)
-    const yesterday = new Date(Date.now() - 86400000);
-    endDate = yesterday.toISOString().slice(0, 19); // YYYY-MM-DDTHH:MM:SS
+    // Convert to Taipei time (UTC+8) for WSL command
+    const lastTaipei = new Date(
+      new Date(lastEndTime).getTime() + 8 * 60 * 60 * 1000
+    );
+    startDate = lastTaipei.toISOString().slice(0, 19); // YYYY-MM-DDTHH:MM:SS
+    // End date: today in Taipei time
+    const nowTaipei = new Date(new Date().getTime() + 8 * 60 * 60 * 1000);
+    endDate = nowTaipei.toISOString().slice(0, 19); // YYYY-MM-DDTHH:MM:SS
     jsonFile = `timew_${startDate.replace(/[-T:]/g, "")}-${endDate.replace(
       /[-T:]/g,
       ""
@@ -98,3 +110,6 @@ module.exports = async function fetchAll() {
 
   await client.end();
 };
+
+// assign grouptype before fetching
+// fetch a specific interval
