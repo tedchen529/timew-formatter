@@ -112,6 +112,3 @@ module.exports = async function fetchAll() {
 
   await client.end();
 };
-
-// assign grouptype before fetching
-// fetch a specific interval
