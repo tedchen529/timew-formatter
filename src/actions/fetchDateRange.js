@@ -3,6 +3,7 @@ const { Client } = require("pg");
 const { execSync } = require("child_process");
 const fs = require("fs");
 const readline = require("readline");
+const { processEntryAnnotation } = require("../utils/projectManager");
 
 // Helper function to convert UTC to Taipei time and get date string
 function getDateInTaipei(utcDateString) {
@@ -225,14 +226,20 @@ module.exports = async function fetchDateRange(startDate, endDate) {
           const taipeiDate = getDateInTaipei(entry.start);
           const groupType = groupTypes[taipeiDate];
 
+          // Process annotation to get projectId and parsed annotation
+          const { projectId, annotation } = await processEntryAnnotation(
+            client,
+            entry.annotation
+          );
+
           await client.query(
-            `INSERT INTO timewplus_entries ("startTime", "endTime", "sessionName", "projectName", "annotation", "groupType") VALUES ($1, $2, $3, $4, $5, $6)`,
+            `INSERT INTO timewplus_entries ("startTime", "endTime", "sessionName", "projectId", "annotation", "groupType") VALUES ($1, $2, $3, $4, $5, $6)`,
             [
               entry.start,
               entry.end,
               entry.tags[0],
-              entry.annotation,
-              entry.annotation,
+              projectId,
+              annotation,
               groupType,
             ]
           );
