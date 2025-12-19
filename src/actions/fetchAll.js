@@ -40,9 +40,10 @@ module.exports = async function fetchAll() {
   if (!lastEndTime) {
     // No entries found, fetch all data from WSL
     startDate = process.env.START_DATE; // Set your desired start date
-    // Use Taipei time for end date
+    // Use yesterday in Taipei time to exclude today
     const nowTaipei = new Date(new Date().getTime() + 8 * 60 * 60 * 1000);
-    endDate = nowTaipei.toISOString().slice(0, 10); // Today in Taipei
+    const yesterday = new Date(nowTaipei.getTime() - 24 * 60 * 60 * 1000);
+    endDate = yesterday.toISOString().slice(0, 10); // Yesterday in Taipei
     jsonFile = `timew_${startDate.replace(/-/g, "")}-${endDate.replace(
       /-/g,
       ""
@@ -76,11 +77,12 @@ module.exports = async function fetchAll() {
       new Date(lastEndTime).getTime() + 8 * 60 * 60 * 1000
     );
     startDate = lastTaipei.toISOString().slice(0, 19); // YYYY-MM-DDTHH:MM:SS
-    // End date: today in Taipei time
+    // End date: yesterday in Taipei time to exclude today
     const nowTaipei = new Date(new Date().getTime() + 8 * 60 * 60 * 1000);
-    endDate = nowTaipei.toISOString().slice(0, 19); // YYYY-MM-DDTHH:MM:SS
+    const yesterday = new Date(nowTaipei.getTime() - 24 * 60 * 60 * 1000);
+    endDate = yesterday.toISOString().slice(0, 10); // Yesterday in Taipei
     jsonFile = `timew_${startDate.replace(/[-T:]/g, "")}-${endDate.replace(
-      /[-T:]/g,
+      /-/g,
       ""
     )}.json`;
     // Use dash as separator, both ISO format
