@@ -27,26 +27,22 @@ module.exports = async function fetchAll() {
   const lastEndTime = res.rows[0]?.endTime;
   console.log("Last entry:", lastEndTime);
 
+  const path = require("path");
+  let startDate, endDate, jsonFile, wslCmd, output, jsonPath, data;
   if (!lastEndTime) {
     // No entries found, fetch all data from WSL
-    const startDate = process.env.START_DATE; // Set your desired start date
-    const endDate = new Date(Date.now() - 86400000).toISOString().slice(0, 10); // Yesterday
-    const jsonFile = `timew_${startDate.replace(/-/g, "")}-${endDate.replace(
+    startDate = process.env.START_DATE; // Set your desired start date
+    endDate = new Date(Date.now() - 86400000).toISOString().slice(0, 10); // Yesterday
+    jsonFile = `timew_${startDate.replace(/-/g, "")}-${endDate.replace(
       /-/g,
       ""
     )}.json`;
-
-    // Run timew export in WSL
-    const wslCmd = `wsl timew export ${startDate} - ${endDate}`;
+    wslCmd = `wsl timew export ${startDate} - ${endDate}`;
     console.log("Running:", wslCmd);
-    const output = execSync(wslCmd, { encoding: "utf8" });
-    const path = require("path");
-    const jsonPath = path.join(__dirname, "..", "..", jsonFile);
+    output = execSync(wslCmd, { encoding: "utf8" });
+    jsonPath = path.join(__dirname, "..", "..", jsonFile);
     fs.writeFileSync(jsonPath, output);
-
-    // Read and parse the JSON file
-    const data = JSON.parse(fs.readFileSync(jsonPath, "utf8"));
-
+    data = JSON.parse(fs.readFileSync(jsonPath, "utf8"));
     // Insert each entry into the database
     for (const entry of data) {
       await client.query(
@@ -62,6 +58,41 @@ module.exports = async function fetchAll() {
       );
     }
     console.log("Inserted entries from JSON export.");
+    fs.unlinkSync(jsonPath); // Delete the JSON file
+  } else {
+    // Entries exist, fetch only new data from WSL after lastEndTime
+    // Use ISO format for both start and end, no dash, just a space
+    const last = new Date(lastEndTime);
+    startDate = last.toISOString().slice(0, 19); // YYYY-MM-DDTHH:MM:SS
+    // End date: yesterday at 23:59:59 (ISO format)
+    const yesterday = new Date(Date.now() - 86400000);
+    endDate = yesterday.toISOString().slice(0, 19); // YYYY-MM-DDTHH:MM:SS
+    jsonFile = `timew_${startDate.replace(/[-T:]/g, "")}-${endDate.replace(
+      /[-T:]/g,
+      ""
+    )}.json`;
+    // Use dash as separator, both ISO format
+    wslCmd = `wsl timew export ${startDate} - ${endDate}`;
+    console.log("Running:", wslCmd);
+    output = execSync(wslCmd, { encoding: "utf8" });
+    jsonPath = path.join(__dirname, "..", "..", jsonFile);
+    fs.writeFileSync(jsonPath, output);
+    data = JSON.parse(fs.readFileSync(jsonPath, "utf8"));
+    // Insert each entry into the database
+    for (const entry of data) {
+      await client.query(
+        `INSERT INTO timewplus_entries ("startTime", "endTime", "sessionName", "projectName", "annotation", "groupType") VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
+          entry.start,
+          entry.end,
+          entry.tags[0],
+          entry.annotation,
+          entry.annotation,
+          entry.annotation,
+        ]
+      );
+    }
+    console.log("Inserted new entries from JSON export after lastEndTime.");
     fs.unlinkSync(jsonPath); // Delete the JSON file
   }
 
