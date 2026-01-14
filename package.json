@@ -1,25 +1,38 @@
 {
   "name": "timew-formatter",
   "version": "1.0.0",
-  "main": "index.js",
-  "scripts": {
-    "start": "node src/index.js",
-    "dev": "nodemon src/index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "description": "CLI tool to bridge Timewarrior data with PostgreSQL database for enhanced time tracking analysis",
+  "type": "module",
+  "main": "src/index.js",
+  "bin": {
+    "timew-formatter": "./src/index.js"
   },
-  "keywords": [],
+  "scripts": {
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "test:coverage": "vitest --coverage",
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "keywords": [
+    "timewarrior",
+    "time-tracking",
+    "postgresql",
+    "cli",
+    "productivity"
+  ],
   "author": "",
-  "license": "ISC",
-  "description": "",
+  "license": "MIT",
   "dependencies": {
-    "dotenv": "^17.2.3",
-    "express": "^5.2.1",
-    "pg": "^8.16.3"
+    "commander": "^12.0.0",
+    "pg": "^8.11.3",
+    "dotenv": "^16.3.1"
   },
   "devDependencies": {
-    "nodemon": "^3.1.11"
+    "vitest": "^1.1.0",
+    "@types/pg": "^8.10.9"
   },
-  "bin": {
-    "timewplus": "./src/cli.js"
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
