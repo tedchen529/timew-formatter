@@ -1,6 +1,7 @@
 {
   "name": "timew-formatter",
   "version": "1.0.0",
+  "type": "module",
   "main": "index.js",
   "scripts": {
     "start": "node src/index.js",
@@ -12,6 +13,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "commander": "^14.0.2",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "pg": "^8.16.3"

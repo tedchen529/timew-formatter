@@ -1,9 +1,16 @@
 question: Which open-source toolkit? Spec Kit, our new open sourced toolkit
 question: CLI tool may be necessary, but not always? perhaps i can use just the vscode copilot
 
+---
+
+## TimeWarrior
+
 ## Vibe-Coding vs Spec-Driven Development
 
 use vibe-coding for quick prototype. but its not reliable . treating them more like literal-minded pair programmers.
+
+Vibe Coding 靠感覺
+SDD 可驗證
 
 ## Source of Truth
 
@@ -37,3 +44,8 @@ Coding agent implements the code according to...
 ## Code Generation
 
 ## Testing
+
+## Tools
+
+https://github.com/Aider-AI/aider
+Check this out CLI tool

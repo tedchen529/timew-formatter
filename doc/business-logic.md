@@ -18,8 +18,8 @@ For each time entry, a Project is assigned. The Project and annotation is based 
 
 When trying to insert entries into teh database, the following rules apply:
 
-Block insertion if entries already exist in specified date range. if there exists entries in that date range, blocck the insertion process.
-When inserting, each date (a day in Taipei timezone) reuires a manual assignment of something called `groupType`, which will be entered in the CLI.
+Block insertion if entries already exist in specified date range. if there exists entries in that date range, block the insertion process.
+When inserting, each date (a day in Taipei timezone) requires a manual assignment of something called `groupType`, which will be entered in the CLI.
 
 ### 4. CLI Commands
 
@@ -55,3 +55,9 @@ When inserting, each date (a day in Taipei timezone) reuires a manual assignment
 2. Check if project exists in database
 3. Create project if not found with auto-generated description
 4. Return project ID for entry association
+
+# New Feature: Analyzer for Existing Time Entry Data in Database
+
+When user types `timewplus analyze YYYY-MM-DD` or `timewplus analyze YYYY-MM-DD - YYYY-MM-DD`, the tool should look in the timewplus_entries table, and take all entries within this time period, aggregate the total time that is spent under each sessionName, and list them in descending order by time usage, highest time usage first. beside the time, there should be a percentage that indicates how much percentage of the total time this sessionName takes.
+
+next, it aggregates the time by projectId. It goes to the timewplus_projects table to get the project name, and lists all projects that are used in this time period. They should be listed by total time spent under each project, and listed from high to low.
